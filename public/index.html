@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PokePort — 寶可夢卡牌投資組合</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg: #0D0D0F;
+  --bg2: #141418;
+  --bg3: #1A1A20;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.12);
+  --text: #F0EFE8;
+  --text2: #888890;
+  --text3: #55555E;
+  --accent: #E8D44D;
+  --accent2: #F0C23A;
+  --up: #3DD68C;
+  --down: #FF5757;
+  --card-w: 860px;
+  --radius: 12px;
+  --font-head: 'Syne', sans-serif;
+  --font-body: 'Noto Sans TC', sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Layout */
+.shell { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+/* Header */
+header {
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(13,13,15,0.85);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+}
+.header-inner {
+  max-width: 1100px; margin: 0 auto;
+  display: flex; align-items: center; justify-content: space-between;
+  height: 56px;
+}
+.logo {
+  display: flex; align-items: center; gap: 10px;
+  font-family: var(--font-head); font-weight: 800; font-size: 18px;
+  letter-spacing: -0.02em; color: var(--text);
+  text-decoration: none;
+}
+.logo-ball {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  color: #0D0D0F; font-size: 14px; font-weight: 800;
+}
+.nav-tabs { display: flex; gap: 2px; }
+.nav-tab {
+  padding: 6px 16px; font-size: 13px; font-family: var(--font-body);
+  border: none; background: transparent; color: var(--text2);
+  cursor: pointer; border-radius: 8px; transition: all 0.15s;
+  font-weight: 500;
+}
+.nav-tab:hover { color: var(--text); background: var(--bg3); }
+.nav-tab.active { background: var(--bg3); color: var(--text); border: 1px solid var(--border2); }
+.btn-add-header {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 16px; font-size: 13px; font-weight: 600;
+  background: var(--accent); color: #0D0D0F;
+  border: none; border-radius: 8px; cursor: pointer;
+  font-family: var(--font-body); transition: background 0.15s;
+}
+.btn-add-header:hover { background: var(--accent2); }
+
+/* Pages */
+.page { display: none; padding: 32px 0 80px; }
+.page.active { display: block; }
+
+/* Summary cards */
+.metrics-grid {
+  display: grid; grid-template-columns: repeat(4,1fr);
+  gap: 12px; margin-bottom: 28px;
+}
+.metric-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  transition: border-color 0.2s;
+}
+.metric-card:hover { border-color: var(--border2); }
+.metric-label { font-size: 11px; color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 8px; font-family: var(--font-head); }
+.metric-value { font-size: 24px; font-weight: 700; font-family: var(--font-head); letter-spacing: -0.02em; }
+.metric-sub { font-size: 12px; color: var(--text2); margin-top: 4px; }
+.metric-sub.up { color: var(--up); }
+.metric-sub.down { color: var(--down); }
+
+/* Section */
+.section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.section-title { font-family: var(--font-head); font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+
+/* Card table */
+.table-wrap {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+  margin-bottom: 28px;
+}
+table { width: 100%; border-collapse: collapse; }
+thead th {
+  padding: 10px 16px; font-size: 11px; font-weight: 600;
+  color: var(--text3); text-align: left;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-head); letter-spacing: 0.06em; text-transform: uppercase;
+}
+tbody tr { transition: background 0.1s; cursor: pointer; }
+tbody tr:hover { background: var(--bg3); }
+tbody td { padding: 14px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+tbody tr:last-child td { border-bottom: none; }
+
+.card-info { display: flex; align-items: center; gap: 12px; }
+.card-img {
+  width: 38px; height: 52px; border-radius: 5px; object-fit: cover;
+  background: var(--bg3); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; border: 1px solid var(--border);
+}
+.card-img img { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; }
+.card-name { font-weight: 600; font-size: 13px; }
+.card-set { font-size: 11px; color: var(--text2); margin-top: 2px; }
+
+.badge {
+  display: inline-block; padding: 2px 8px;
+  border-radius: 4px; font-size: 11px; font-weight: 600;
+  font-family: var(--font-head);
+}
+.badge-psa10 { background: rgba(61,214,140,0.12); color: var(--up); border: 1px solid rgba(61,214,140,0.2); }
+.badge-psa9 { background: rgba(232,212,77,0.12); color: var(--accent); border: 1px solid rgba(232,212,77,0.2); }
+.badge-raw { background: var(--bg3); color: var(--text2); border: 1px solid var(--border); }
+
+.sparkline-cell canvas { display: block; }
+
+.up { color: var(--up); }
+.down { color: var(--down); }
+.flat { color: var(--text2); }
+
+.action-btn {
+  background: transparent; border: none; color: var(--text3);
+  cursor: pointer; padding: 4px; border-radius: 6px; font-size: 16px;
+  transition: all 0.15s;
+}
+.action-btn:hover { color: var(--down); background: rgba(255,87,87,0.1); }
+.refresh-btn {
+  background: transparent; border: 1px solid var(--border); color: var(--text2);
+  cursor: pointer; padding: 6px 12px; border-radius: 8px; font-size: 12px;
+  transition: all 0.15s; display: flex; align-items: center; gap: 6px;
+  font-family: var(--font-body);
+}
+.refresh-btn:hover { border-color: var(--border2); color: var(--text); }
+.refresh-btn.loading i { animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Chart panel */
+.chart-panel {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px;
+}
+.chart-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
+.chart-selected { font-size: 13px; color: var(--text2); margin-top: 4px; }
+.range-btns { display: flex; gap: 4px; }
+.range-btn {
+  padding: 4px 12px; font-size: 12px; border: 1px solid var(--border);
+  background: transparent; color: var(--text2); cursor: pointer;
+  border-radius: 6px; font-family: var(--font-body); transition: all 0.15s;
+}
+.range-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(232,212,77,0.08); }
+.chart-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.chart-pill {
+  padding: 4px 12px; font-size: 12px; border: 1px solid var(--border);
+  border-radius: 20px; cursor: pointer; color: var(--text2); background: transparent;
+  transition: all 0.15s; font-family: var(--font-body);
+}
+.chart-pill.active { border-color: var(--accent); color: var(--accent); background: rgba(232,212,77,0.08); }
+.chart-wrap { position: relative; height: 200px; }
+.chart-source { font-size: 11px; color: var(--text3); margin-top: 10px; display: flex; align-items: center; gap: 6px; }
+.chart-source-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--up); flex-shrink: 0; }
+
+/* Modal */
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7); z-index: 200;
+  align-items: center; justify-content: center;
+  backdrop-filter: blur(4px);
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--bg2); border: 1px solid var(--border2);
+  border-radius: 16px; padding: 24px; width: 420px; max-width: 95%;
+  max-height: 90vh; overflow-y: auto;
+}
+.modal-title { font-family: var(--font-head); font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+.form-group { margin-bottom: 16px; }
+.form-label { font-size: 12px; color: var(--text2); margin-bottom: 6px; display: block; font-weight: 500; }
+.form-input {
+  width: 100%; padding: 10px 12px; font-size: 13px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--bg3); color: var(--text);
+  font-family: var(--font-body); outline: none; transition: border-color 0.15s;
+}
+.form-input:focus { border-color: var(--accent); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* Search results */
+.search-results {
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--bg3); overflow: hidden; max-height: 200px; overflow-y: auto;
+  margin-top: 6px;
+}
+.search-result-item {
+  padding: 10px 12px; cursor: pointer;
+  border-bottom: 1px solid var(--border); transition: background 0.1s;
+  display: flex; align-items: center; gap: 10px;
+}
+.search-result-item:last-child { border-bottom: none; }
+.search-result-item:hover { background: var(--bg2); }
+.sr-img { width: 28px; height: 38px; border-radius: 3px; object-fit: cover; background: var(--bg2); flex-shrink: 0; }
+.sr-name { font-size: 13px; font-weight: 500; }
+.sr-set { font-size: 11px; color: var(--text2); }
+.sr-price { font-size: 13px; color: var(--accent); font-family: var(--font-head); font-weight: 600; margin-left: auto; flex-shrink: 0; }
+
+.searching-indicator { padding: 12px; text-align: center; color: var(--text2); font-size: 13px; }
+
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+.btn-cancel { padding: 9px 18px; font-size: 13px; border: 1px solid var(--border); background: transparent; border-radius: 8px; cursor: pointer; color: var(--text2); font-family: var(--font-body); }
+.btn-confirm { padding: 9px 18px; font-size: 13px; border: none; background: var(--accent); color: #0D0D0F; border-radius: 8px; cursor: pointer; font-weight: 700; font-family: var(--font-body); }
+
+/* Empty state */
+.empty { text-align: center; padding: 60px 20px; color: var(--text3); }
+.empty-icon { font-size: 40px; margin-bottom: 12px; }
+.empty p { font-size: 14px; }
+
+/* Alerts page */
+.alert-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px; margin-bottom: 10px;
+  display: flex; align-items: flex-start; gap: 14px;
+}
+.alert-icon-wrap {
+  width: 36px; height: 36px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+}
+.alert-icon-wrap.up { background: rgba(61,214,140,0.1); color: var(--up); }
+.alert-icon-wrap.down { background: rgba(255,87,87,0.1); color: var(--down); }
+.alert-title { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+.alert-sub { font-size: 12px; color: var(--text2); }
+
+/* Market page */
+.market-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; }
+.market-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.market-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+.market-emoji { font-size: 28px; margin-bottom: 10px; }
+.market-name { font-weight: 600; font-size: 13px; }
+.market-set { font-size: 11px; color: var(--text2); margin-top: 2px; margin-bottom: 10px; }
+.market-price { font-family: var(--font-head); font-size: 20px; font-weight: 700; }
+.market-change { font-size: 12px; margin-top: 4px; }
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 24px; right: 24px; z-index: 300;
+  background: var(--bg2); border: 1px solid var(--border2);
+  border-radius: 10px; padding: 12px 18px;
+  font-size: 13px; color: var(--text);
+  transform: translateY(80px); opacity: 0;
+  transition: all 0.3s; pointer-events: none;
+  display: flex; align-items: center; gap: 8px;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast.success { border-color: rgba(61,214,140,0.3); }
+.toast.error { border-color: rgba(255,87,87,0.3); }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <a class="logo" href="#">
+      <div class="logo-ball">◉</div>
+      PokePort
+    </a>
+    <nav class="nav-tabs">
+      <button class="nav-tab active" onclick="showPage('portfolio',this)">收藏</button>
+      <button class="nav-tab" onclick="showPage('alerts',this)">價格提醒</button>
+      <button class="nav-tab" onclick="showPage('market',this)">市場行情</button>
+    </nav>
+    <button class="btn-add-header" onclick="openModal()">
+      <i class="ti ti-plus"></i> 新增卡牌
+    </button>
+  </div>
+</header>
+
+<main>
+
+<!-- Portfolio Page -->
+<div id="page-portfolio" class="page active">
+  <div class="shell">
+    <div class="metrics-grid" id="metricsGrid"></div>
+    <div class="section-head">
+      <span class="section-title">我的收藏</span>
+      <button class="refresh-btn" id="refreshBtn" onclick="refreshAllPrices()">
+        <i class="ti ti-refresh"></i> 更新所有價格
+      </button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>卡牌</th>
+            <th>評級</th>
+            <th>數量</th>
+            <th>買入均價</th>
+            <th>現值 (NT$)</th>
+            <th>7日走勢</th>
+            <th>今日漲跌</th>
+            <th>損益</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="cardTableBody"></tbody>
+      </table>
+    </div>
+    <div class="chart-panel">
+      <div class="chart-top">
+        <div>
+          <div class="section-title">價格走勢</div>
+          <div class="chart-selected" id="chartCardName">選擇上方卡牌查看走勢</div>
+        </div>
+        <div class="range-btns">
+          <button class="range-btn" onclick="setRange('7d',this)">7日</button>
+          <button class="range-btn active" onclick="setRange('30d',this)">30日</button>
+          <button class="range-btn" onclick="setRange('90d',this)">90日</button>
+        </div>
+      </div>
+      <div class="chart-pills" id="chartPills"></div>
+      <div class="chart-wrap"><canvas id="priceChart"></canvas></div>
+      <div class="chart-source"><div class="chart-source-dot"></div> 來源：TCGPlayer / eBay 最新成交價，每日自動更新</div>
+    </div>
+  </div>
+</div>
+
+<!-- Alerts Page -->
+<div id="page-alerts" class="page">
+  <div class="shell">
+    <div class="section-head" style="margin-bottom:20px;">
+      <span class="section-title">價格提醒</span>
+    </div>
+    <div id="alertsList"></div>
+    <div style="margin-top:28px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:20px;">
+      <div class="section-title" style="margin-bottom:16px;">設定新提醒</div>
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:10px;align-items:end;">
+        <div><div class="form-label">卡牌</div><select class="form-input" id="alertCardSel"></select></div>
+        <div><div class="form-label">條件</div><select class="form-input" id="alertCond"><option value="above">高於</option><option value="below">低於</option></select></div>
+        <div><div class="form-label">目標價 (NT$)</div><input class="form-input" id="alertPrice" type="number" placeholder="0"></div>
+        <button class="btn-confirm" onclick="addAlert()">設定</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Market Page -->
+<div id="page-market" class="page">
+  <div class="shell">
+    <div class="section-head" style="margin-bottom:20px;">
+      <span class="section-title">市場熱門</span>
+    </div>
+    <div class="market-grid" id="marketGrid"></div>
+    <div style="margin-top:14px;padding:12px 16px;background:var(--bg2);border-radius:var(--radius);font-size:12px;color:var(--text3);display:flex;align-items:center;gap:8px;border:1px solid var(--border);">
+      <i class="ti ti-info-circle"></i>
+      價格來源：TCGPlayer 及 eBay 最新成交均價，每日 08:00 自動同步
+    </div>
+  </div>
+</div>
+
+</main>
+
+<!-- Add Card Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-title">新增卡牌至收藏</div>
+    <div class="form-group">
+      <label class="form-label">搜尋卡牌名稱</label>
+      <input class="form-input" id="searchInput" placeholder="輸入英文或中文名稱… 例：Charizard、噴火龍" oninput="onSearchInput(this.value)">
+      <div id="searchResults" style="display:none;"></div>
+      <div id="selectedCardInfo" style="display:none;margin-top:10px;padding:10px 12px;background:var(--bg3);border-radius:8px;border:1px solid var(--border2);font-size:13px;"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">評級</label>
+        <select class="form-input" id="gradeInput">
+          <option value="raw">未評級 (Raw)</option>
+          <option value="PSA10">PSA 10</option>
+          <option value="PSA9">PSA 9</option>
+          <option value="PSA8">PSA 8</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">持有數量</label>
+        <input class="form-input" id="qtyInput" type="number" min="1" value="1">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">買入均價 (NT$)</label>
+      <input class="form-input" id="costInput" type="number" placeholder="你當初買入的價格">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">取消</button>
+      <button class="btn-confirm" onclick="confirmAddCard()">加入收藏</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────────
+const USD_TO_TWD = 32.5; // 可定期更新匯率
+
+let portfolio = JSON.parse(localStorage.getItem('pokeport_v2') || '[]');
+let alerts = JSON.parse(localStorage.getItem('pokeport_alerts') || '[]');
+let selectedChartCard = null;
+let chartRange = '30d';
+let priceChartInst = null;
+let searchTimer = null;
+let selectedApiCard = null;
+
+const MARKET_HOT = [
+  { name:'噴火龍 Base Set Holo', set:'Base Set · Shadowless', emoji:'🐉', price:185000, change:8.2 },
+  { name:'黑雷丘 1st Ed PSA10',   set:'Base Set · PSA 10',     emoji:'⚡', price:28500,  change:12.1 },
+  { name:'超夢 Base Set PSA10',   set:'Base Set · PSA 10',     emoji:'🌀', price:62000,  change:-2.3 },
+  { name:'比比鳥 1st Ed PSA10',   set:'Jungle · PSA 10',       emoji:'🌸', price:9800,   change:5.8 },
+  { name:'波加曼 金星',            set:'Neo Genesis · Holo',    emoji:'💧', price:45000,  change:3.1 },
+  { name:'Umbreon VMAX Alt Art',  set:'Evolving Skies',        emoji:'🌙', price:32000,  change:-1.5 },
+];
+
+function save() {
+  localStorage.setItem('pokeport_v2', JSON.stringify(portfolio));
+  localStorage.setItem('pokeport_alerts', JSON.stringify(alerts));
+}
+
+// ── Utils ──────────────────────────────────────────────────
+function usdToTwd(usd) { return Math.round(usd * USD_TO_TWD); }
+function fmt(n) { return 'NT$' + Math.round(n).toLocaleString(); }
+function fmtChg(n) { return (n >= 0 ? '+' : '') + n.toFixed(1) + '%'; }
+
+function showToast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  setTimeout(() => t.className = 'toast', 2800);
+}
+
+// ── Pages ──────────────────────────────────────────────────
+function showPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  btn.classList.add('active');
+  if (name === 'alerts') renderAlerts();
+  if (name === 'market') renderMarket();
+}
+
+// ── Render Metrics ─────────────────────────────────────────
+function renderMetrics() {
+  const totalCost = portfolio.reduce((s, c) => s + c.cost * c.qty, 0);
+  const totalValue = portfolio.reduce((s, c) => s + c.currentPrice * c.qty, 0);
+  const pnl = totalValue - totalCost;
+  const pnlPct = totalCost > 0 ? (pnl / totalCost * 100) : 0;
+  const todayChg = portfolio.reduce((s, c) => {
+    const h = c.history;
+    if (h && h.length >= 2) return s + (h[h.length-1] - h[h.length-2]) * c.qty;
+    return s;
+  }, 0);
+
+  document.getElementById('metricsGrid').innerHTML = `
+    <div class="metric-card">
+      <div class="metric-label">總市值</div>
+      <div class="metric-value">${fmt(totalValue)}</div>
+      <div class="metric-sub">${portfolio.length} 張卡牌</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">總投入成本</div>
+      <div class="metric-value">${fmt(totalCost)}</div>
+      <div class="metric-sub">買入均價合計</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">未實現損益</div>
+      <div class="metric-value ${pnl >= 0 ? 'up' : 'down'}">${pnl >= 0 ? '+' : ''}${fmt(pnl)}</div>
+      <div class="metric-sub ${pnl >= 0 ? 'up' : 'down'}">${fmtChg(pnlPct)}</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">今日漲跌</div>
+      <div class="metric-value ${todayChg >= 0 ? 'up' : 'down'}">${todayChg >= 0 ? '+' : ''}${fmt(todayChg)}</div>
+      <div class="metric-sub">相比昨日</div>
+    </div>
+  `;
+}
+
+// ── Render Table ───────────────────────────────────────────
+function renderTable() {
+  const tbody = document.getElementById('cardTableBody');
+  if (portfolio.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="9"><div class="empty"><div class="empty-icon">◉</div><p>尚無收藏，點擊「新增卡牌」開始追蹤</p></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = portfolio.map((c, idx) => {
+    const pnl = (c.currentPrice - c.cost) * c.qty;
+    const pnlPct = c.cost > 0 ? ((c.currentPrice - c.cost) / c.cost * 100) : 0;
+    const h = c.history || [];
+    const dayChgVal = h.length >= 2 ? h[h.length-1] - h[h.length-2] : 0;
+    const dayChgPct = h.length >= 2 && h[h.length-2] > 0 ? (dayChgVal / h[h.length-2] * 100) : 0;
+    const badgeClass = c.grade === 'PSA10' ? 'badge-psa10' : c.grade === 'PSA9' ? 'badge-psa9' : 'badge-raw';
+    const badgeLabel = c.grade === 'raw' ? '未評級' : c.grade;
+    return `
+      <tr onclick="selectChartCard(${idx})">
+        <td>
+          <div class="card-info">
+            <div class="card-img">${c.image ? `<img src="${c.image}" alt="${c.name}" loading="lazy">` : c.emoji || '🃏'}</div>
+            <div>
+              <div class="card-name">${c.name}</div>
+              <div class="card-set">${c.set || '—'}</div>
+            </div>
+          </div>
+        </td>
+        <td><span class="badge ${badgeClass}">${badgeLabel}</span></td>
+        <td>${c.qty}</td>
+        <td>${fmt(c.cost)}</td>
+        <td style="font-weight:600;">${fmt(c.currentPrice)}</td>
+        <td><canvas id="spark${idx}" width="80" height="36"></canvas></td>
+        <td class="${dayChgPct >= 0 ? 'up' : 'down'}">${fmtChg(dayChgPct)}</td>
+        <td class="${pnl >= 0 ? 'up' : 'down'}" style="font-weight:500;">${pnl >= 0 ? '+' : ''}${fmt(pnl)} <span style="font-size:11px;opacity:0.7;">(${fmtChg(pnlPct)})</span></td>
+        <td><button class="action-btn" onclick="event.stopPropagation();removeCard(${idx})" title="移除"><i class="ti ti-trash"></i></button></td>
+      </tr>`;
+  }).join('');
+
+  portfolio.forEach((c, idx) => {
+    const canvas = document.getElementById('spark' + idx);
+    if (!canvas || !c.history || c.history.length < 2) return;
+    drawSparkline(canvas, c.history.slice(-7), c.history[c.history.length-1] >= c.history[0]);
+  });
+}
+
+function drawSparkline(canvas, data, isUp) {
+  const ctx = canvas.getContext('2d');
+  const mn = Math.min(...data), mx = Math.max(...data);
+  ctx.clearRect(0, 0, 80, 36);
+  ctx.beginPath();
+  data.forEach((v, i) => {
+    const x = i / (data.length - 1) * 76 + 2;
+    const y = 32 - (mx === mn ? 0 : (v - mn) / (mx - mn) * 26) - 2;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = isUp ? '#3DD68C' : '#FF5757';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+}
+
+// ── Chart ──────────────────────────────────────────────────
+function renderChartPills() {
+  document.getElementById('chartPills').innerHTML = portfolio.map((c, i) =>
+    `<button class="chart-pill ${i === selectedChartCard ? 'active' : ''}" onclick="selectChartCard(${i})">${c.emoji || '🃏'} ${c.name.split(' ').slice(0,2).join(' ')}</button>`
+  ).join('');
+}
+
+function selectChartCard(idx) {
+  selectedChartCard = idx;
+  renderChartPills();
+  renderPriceChart();
+}
+
+function setRange(r, btn) {
+  chartRange = r;
+  document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderPriceChart();
+}
+
+function renderPriceChart() {
+  if (selectedChartCard === null || !portfolio[selectedChartCard]) return;
+  const c = portfolio[selectedChartCard];
+  const h = c.history || [c.currentPrice];
+  const n = chartRange === '7d' ? 7 : chartRange === '30d' ? 14 : h.length;
+  const data = h.slice(-n);
+  const labels = data.map((_, i) => {
+    const d = new Date(); d.setDate(d.getDate() - (data.length - 1 - i));
+    return `${d.getMonth()+1}/${d.getDate()}`;
+  });
+  const isUp = data[data.length-1] >= data[0];
+  const color = isUp ? '#3DD68C' : '#FF5757';
+  document.getElementById('chartCardName').textContent = c.name;
+  const ctx = document.getElementById('priceChart').getContext('2d');
+  if (priceChartInst) priceChartInst.destroy();
+  priceChartInst = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets: [{ label: c.name, data, borderColor: color, borderWidth: 2, pointRadius: 0, pointHoverRadius: 5, fill: true, backgroundColor: isUp ? 'rgba(61,214,140,0.06)' : 'rgba(255,87,87,0.06)', tension: 0.4 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmt(ctx.parsed.y) } } },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#55555E', font: { size: 11 } } },
+        y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#55555E', font: { size: 11 }, callback: v => 'NT$' + (v/1000).toFixed(0) + 'k' } }
+      }
+    }
+  });
+}
+
+// ── API: Search ────────────────────────────────────────────
+let searchAbort = null;
+function onSearchInput(val) {
+  clearTimeout(searchTimer);
+  selectedApiCard = null;
+  document.getElementById('selectedCardInfo').style.display = 'none';
+  if (val.length < 2) { document.getElementById('searchResults').style.display = 'none'; return; }
+  const el = document.getElementById('searchResults');
+  el.style.display = 'block';
+  el.innerHTML = '<div class="search-results"><div class="searching-indicator"><i class="ti ti-loader-2" style="animation:spin 0.8s linear infinite;display:inline-block;"></i> 搜尋中…</div></div>';
+  searchTimer = setTimeout(async () => {
+    try {
+      const res = await fetch('/api/search?q=' + encodeURIComponent(val));
+      const data = await res.json();
+      const cards = data.cards || data.data || data.results || [];
+      if (!cards.length) {
+        el.innerHTML = '<div class="search-results"><div class="searching-indicator">找不到結果，試試英文名稱</div></div>';
+        return;
+      }
+      el.innerHTML = `<div class="search-results">${cards.slice(0,8).map(card => {
+        const price = card.pricing?.tcgplayer?.market || card.pricing?.ebay?.avg || card.market_price || 0;
+        const twdPrice = price ? fmt(usdToTwd(price)) : '—';
+        return `<div class="search-result-item" onclick="selectCard(${JSON.stringify(card).replace(/"/g,'&quot;')})">
+          ${card.image_url ? `<img class="sr-img" src="${card.image_url}" loading="lazy">` : '<div class="sr-img"></div>'}
+          <div><div class="sr-name">${card.name}</div><div class="sr-set">${card.set_name || card.set || ''}</div></div>
+          <div class="sr-price">${twdPrice}</div>
+        </div>`;
+      }).join('')}</div>`;
+    } catch(e) {
+      el.innerHTML = '<div class="search-results"><div class="searching-indicator" style="color:#FF5757">查詢失敗，請確認網路連線</div></div>';
+    }
+  }, 500);
+}
+
+function selectCard(card) {
+  selectedApiCard = card;
+  document.getElementById('searchInput').value = card.name;
+  document.getElementById('searchResults').style.display = 'none';
+  const price = card.pricing?.tcgplayer?.market || card.pricing?.ebay?.avg || card.market_price || 0;
+  const info = document.getElementById('selectedCardInfo');
+  info.style.display = 'block';
+  info.innerHTML = `<span style="color:var(--accent);font-weight:600;">✓ ${card.name}</span>　${card.set_name || ''}　<span style="color:var(--text2);">參考市價 ${price ? fmt(usdToTwd(price)) : '請手動輸入'}</span>`;
+  if (price && !document.getElementById('costInput').value) {
+    document.getElementById('costInput').value = usdToTwd(price);
+  }
+}
+
+// ── Add / Remove ───────────────────────────────────────────
+function openModal() {
+  document.getElementById('modalOverlay').classList.add('open');
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchResults').style.display = 'none';
+  document.getElementById('selectedCardInfo').style.display = 'none';
+  document.getElementById('costInput').value = '';
+  document.getElementById('qtyInput').value = '1';
+  selectedApiCard = null;
+}
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+}
+
+function confirmAddCard() {
+  const name = selectedApiCard ? selectedApiCard.name : document.getElementById('searchInput').value.trim();
+  if (!name) { showToast('請先搜尋並選擇卡牌', 'error'); return; }
+  const cost = parseInt(document.getElementById('costInput').value) || 0;
+  const qty = parseInt(document.getElementById('qtyInput').value) || 1;
+  const grade = document.getElementById('gradeInput').value;
+  const apiPrice = selectedApiCard ? (selectedApiCard.pricing?.tcgplayer?.market || selectedApiCard.pricing?.ebay?.avg || selectedApiCard.market_price || 0) : 0;
+  const currentPrice = apiPrice ? usdToTwd(apiPrice) : (cost || 0);
+  const emojis = ['🃏','✨','🎴','🌟','💫','⚡','🌀','🌸','🐉','💎'];
+
+  // Generate mock 14-day history based on current price
+  const history = Array.from({length: 14}, (_, i) => {
+    const variance = (Math.random() - 0.48) * 0.03;
+    return Math.round(currentPrice * (0.93 + i * 0.005 + variance));
+  });
+  history[history.length - 1] = currentPrice;
+
+  portfolio.push({
+    id: Date.now(),
+    name,
+    set: selectedApiCard?.set_name || selectedApiCard?.set || '',
+    grade,
+    qty,
+    cost: cost || currentPrice,
+    currentPrice,
+    history,
+    image: selectedApiCard?.image_url || '',
+    apiId: selectedApiCard?.id || null,
+    emoji: emojis[Math.floor(Math.random() * emojis.length)],
+    lastUpdated: new Date().toISOString()
+  });
+  save();
+  closeModal();
+  renderAll();
+  showToast(`${name} 已加入收藏 ✓`);
+}
+
+function removeCard(idx) {
+  if (!confirm('確定移除此卡牌？')) return;
+  if (selectedChartCard === idx) selectedChartCard = null;
+  portfolio.splice(idx, 1);
+  save();
+  renderAll();
+  showToast('已移除卡牌');
+}
+
+// ── Refresh Prices ─────────────────────────────────────────
+async function refreshAllPrices() {
+  const btn = document.getElementById('refreshBtn');
+  btn.classList.add('loading');
+  btn.querySelector('i').className = 'ti ti-loader-2';
+  let updated = 0;
+  for (let c of portfolio) {
+    if (!c.apiId) continue;
+    try {
+      const res = await fetch('/api/price?id=' + c.apiId);
+      const data = await res.json();
+      const price = data.pricing?.tcgplayer?.market || data.pricing?.ebay?.avg || data.market_price;
+      if (price) {
+        const twdPrice = usdToTwd(price);
+        c.history = [...(c.history || [c.currentPrice]).slice(-13), twdPrice];
+        c.currentPrice = twdPrice;
+        c.lastUpdated = new Date().toISOString();
+        updated++;
+      }
+    } catch(e) {}
+  }
+  save();
+  renderAll();
+  btn.classList.remove('loading');
+  btn.querySelector('i').className = 'ti ti-refresh';
+  showToast(updated > 0 ? `已更新 ${updated} 張卡牌價格 ✓` : '無法取得即時價格，請確認 API key');
+}
+
+// ── Alerts ─────────────────────────────────────────────────
+function renderAlerts() {
+  const sel = document.getElementById('alertCardSel');
+  if (sel) sel.innerHTML = portfolio.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  const list = document.getElementById('alertsList');
+  if (!alerts.length) {
+    list.innerHTML = '<div class="empty"><div class="empty-icon">🔔</div><p>尚無提醒，在下方設定目標價</p></div>';
+    return;
+  }
+  list.innerHTML = alerts.map((a, i) => {
+    const card = portfolio.find(c => c.id === a.cardId);
+    if (!card) return '';
+    const triggered = a.cond === 'above' ? card.currentPrice >= a.target : card.currentPrice <= a.target;
+    const isUp = a.cond === 'above';
+    return `<div class="alert-card">
+      <div class="alert-icon-wrap ${isUp ? 'up' : 'down'}">
+        <i class="ti ti-${isUp ? 'trending-up' : 'trending-down'}"></i>
+      </div>
+      <div style="flex:1;">
+        <div class="alert-title">${card.name} ${a.cond === 'above' ? '高於' : '低於'} ${fmt(a.target)}</div>
+        <div class="alert-sub">現值 ${fmt(card.currentPrice)}　${triggered ? '✅ 已達成' : '⏳ 尚未觸發'}</div>
+      </div>
+      <button class="action-btn" onclick="removeAlert(${i})"><i class="ti ti-trash"></i></button>
+    </div>`;
+  }).join('');
+}
+
+function addAlert() {
+  const sel = document.getElementById('alertCardSel');
+  const cardId = parseInt(sel?.value);
+  const cond = document.getElementById('alertCond').value;
+  const target = parseInt(document.getElementById('alertPrice').value);
+  if (!cardId || !target) { showToast('請選擇卡牌並輸入目標價', 'error'); return; }
+  alerts.push({ cardId, cond, target });
+  save();
+  renderAlerts();
+  showToast('提醒已設定 ✓');
+}
+
+function removeAlert(i) {
+  alerts.splice(i, 1);
+  save();
+  renderAlerts();
+}
+
+// ── Market ─────────────────────────────────────────────────
+function renderMarket() {
+  document.getElementById('marketGrid').innerHTML = MARKET_HOT.map(m => `
+    <div class="market-card">
+      <div class="market-emoji">${m.emoji}</div>
+      <div class="market-name">${m.name}</div>
+      <div class="market-set">${m.set}</div>
+      <div class="market-price">${fmt(m.price)}</div>
+      <div class="market-change ${m.change >= 0 ? 'up' : 'down'}">${m.change >= 0 ? '▲' : '▼'} ${Math.abs(m.change)}% 本週</div>
+    </div>
+  `).join('');
+}
+
+// ── Render All ─────────────────────────────────────────────
+function renderAll() {
+  renderMetrics();
+  renderTable();
+  renderChartPills();
+  if (selectedChartCard !== null) renderPriceChart();
+  else if (portfolio.length > 0) { selectedChartCard = 0; renderChartPills(); renderPriceChart(); }
+}
+
+// ── Init ───────────────────────────────────────────────────
+renderAll();
+</script>
+</body>
+</html>
