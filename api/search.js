@@ -1,4 +1,3 @@
-// api/search.js — 搜尋卡牌
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -10,9 +9,9 @@ export default async function handler(req, res) {
   if (!API_KEY) return res.status(500).json({ error: 'API key 未設定' });
 
   try {
-    const url = `https://www.pokemonpricetracker.com/api/v2/cards?search=${encodeURIComponent(q)}&limit=10`;
+    const url = `https://www.pokemonpricetracker.com/api/v2/cards?name=${encodeURIComponent(q)}&limit=10`;
     const response = await fetch(url, {
-      headers: { 'X-API-Key': API_KEY }
+      headers: { 'Authorization': `Bearer ${API_KEY}` }
     });
     const data = await response.json();
     return res.status(200).json(data);
